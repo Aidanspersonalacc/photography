@@ -89,7 +89,21 @@ function show(f){
 
 function open(i){ cur = i; $('#lbi').src = photos[i].u; $('#dl').href = photos[i].d; $('#dl').download = 'photo-' + (i + 1) + '.jpg'; $('#lb').hidden = false; }
 function step(d){ open((cur + d + photos.length) % photos.length); }
-$('#dla').onclick = async () => { for (let i = 0; i < photos.length; i++) { const a = document.createElement('a'); a.href = photos[i].d; a.download = 'photo-' + (i + 1) + '.jpg'; document.body.append(a); a.click(); a.remove(); await new Promise(r => setTimeout(r, 600)); } };
+const isTouch = matchMedia('(pointer:coarse)').matches;
+async function saveToPhotos(idx){
+  try {
+    const files = await Promise.all(idx.map(async i => { const b = await (await fetch(photos[i].d)).blob(); return new File([b], 'photo-' + (i + 1) + '.jpg', { type: 'image/jpeg' }); }));
+    if (navigator.canShare && navigator.canShare({ files })) { await navigator.share({ files }); return true; }
+  } catch (e) { if (e && e.name === 'AbortError') return true; }
+  return false;
+}
+if (isTouch) { $('#dl').textContent = 'Save to Photos'; $('#dla').textContent = 'Save all to Photos'; }
+$('#dl').onclick = async e => {
+  if (!isTouch) return;
+  e.preventDefault();
+  if (!await saveToPhotos([cur])) { const a = document.createElement('a'); a.href = photos[cur].d; a.download = 'photo-' + (cur + 1) + '.jpg'; document.body.append(a); a.click(); a.remove(); }
+};
+$('#dla').onclick = async () => { if (isTouch && await saveToPhotos(photos.map((_, i) => i))) return; for (let i = 0; i < photos.length; i++) { const a = document.createElement('a'); a.href = photos[i].d; a.download = 'photo-' + (i + 1) + '.jpg'; document.body.append(a); a.click(); a.remove(); await new Promise(r => setTimeout(r, 600)); } };
 $('#lb .x').onclick = () => { $('#lb').hidden = true; };
 $('#lb .pv').onclick = () => step(-1);
 $('#lb .nx').onclick = () => step(1);
